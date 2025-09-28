@@ -12,6 +12,7 @@ import sys
 from typing import List, Optional
 from tabulate import tabulate
 from process_monitor import ProcessMonitor, ProcessInfo
+from logging_manager import LoggingManager
 
 
 class ProcessMonitorCLI:
@@ -41,7 +42,9 @@ class ProcessMonitorCLI:
             print(f"Found {len(self.processes)} processes")
             
             # Execute requested action
-            if args.hierarchy:
+            if args.log:
+                self._start_logging(args.log, args.log_interval, args.log_dir)
+            elif args.hierarchy:
                 self._display_hierarchy()
             elif args.summary:
                 self._display_system_summary()
@@ -212,6 +215,11 @@ class ProcessMonitorCLI:
             if proc.pid == pid:
                 return proc.name
         return "Unknown"
+    
+    def _start_logging(self, duration: Optional[int], interval: int, output_dir: str) -> None:
+        """Start continuous logging of process data."""
+        logging_manager = LoggingManager(output_dir=output_dir, log_interval=interval)
+        logging_manager.start_continuous_logging(duration=duration)
 
 
 def main():
@@ -225,6 +233,8 @@ Examples:
   python main.py --hierarchy        # Show process hierarchy
   python main.py --summary         # Show system resource summary
   python main.py --top 10          # Show top 10 processes by CPU
+  python main.py --log 60          # Log for 60 seconds
+  python main.py --log 300 --log-interval 10  # Log for 5 minutes every 10 seconds
         """
     )
     
@@ -245,6 +255,29 @@ Examples:
         type=int,
         metavar="N",
         help="Display top N processes by CPU usage"
+    )
+    
+    parser.add_argument(
+        "--log",
+        type=int,
+        metavar="SECONDS",
+        help="Start continuous logging for specified duration in seconds"
+    )
+    
+    parser.add_argument(
+        "--log-interval",
+        type=int,
+        default=5,
+        metavar="SECONDS",
+        help="Logging interval in seconds (default: 5)"
+    )
+    
+    parser.add_argument(
+        "--log-dir",
+        type=str,
+        default="logs",
+        metavar="DIRECTORY",
+        help="Directory to save log files (default: logs)"
     )
     
     args = parser.parse_args()
