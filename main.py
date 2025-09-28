@@ -92,6 +92,12 @@ class ProcessMonitorCLI:
         
         if not hierarchy:
             print("No process hierarchy found.")
+            print(f"Debug: Found {len(self.processes)} processes")
+            print(f"Debug: Parent-child map has {len(self.monitor.parent_child_map)} entries")
+            if self.monitor.parent_child_map:
+                print("Debug: Sample parent-child relationships:")
+                for parent, children in list(self.monitor.parent_child_map.items())[:5]:
+                    print(f"  {parent} -> {children}")
             return
         
         # Display hierarchy in tree format

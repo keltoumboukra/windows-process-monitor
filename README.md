@@ -56,7 +56,6 @@ python main.py --summary
 ## Dependencies
 
 - `psutil`: Cross-platform process and system utilities
-- `pywin32`: Windows-specific system calls
 - `tabulate`: Formatted table output
 
 ## Development Status

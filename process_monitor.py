@@ -92,8 +92,13 @@ class ProcessMonitor:
             Dictionary mapping parent PIDs to lists of child PIDs.
         """
         if root_pid is None:
-            # Find processes with no parent (system processes)
-            root_processes = [p.pid for p in self.processes if p.parent_pid is None]
+            # Find processes with no parent (system processes) or PID 1 (init/launchd)
+            root_processes = [p.pid for p in self.processes if p.parent_pid is None or p.pid == 1]
+            
+            # If no root processes found, use the process with the lowest PID as root
+            if not root_processes:
+                root_processes = [min(p.pid for p in self.processes)]
+            
             hierarchy = {}
             for root_pid in root_processes:
                 hierarchy.update(self._get_children_recursive(root_pid))

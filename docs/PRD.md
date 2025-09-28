@@ -59,7 +59,6 @@ The Windows Process Monitor is a lightweight, open-source tool designed to provi
 - **Languages/Frameworks**: Python 3.11+ or C#/.NET
 - **Dependencies**:
   - `psutil` for process and resource information
-  - `pywin32` for Windows-specific system calls
   - `tabulate` or `rich` for formatted console output
 - **Design Considerations**:
   - Class-based, modular architecture for future extensibility
