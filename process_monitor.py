@@ -41,6 +41,8 @@ class ProcessMonitor:
             List of ProcessInfo objects for all accessible processes.
         """
         processes = []
+        access_denied_count = 0
+        no_such_process_count = 0
         
         for proc in psutil.process_iter(['pid', 'name', 'status', 'cpu_percent', 
                                        'memory_info', 'ppid', 'create_time', 'username']):
@@ -63,12 +65,25 @@ class ProcessMonitor:
                 
                 processes.append(process_info)
                 
-            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-                # Skip processes we can't access
+            except psutil.AccessDenied:
+                access_denied_count += 1
+                continue
+            except (psutil.NoSuchProcess, psutil.ZombieProcess):
+                no_such_process_count += 1
                 continue
         
         self.processes = processes
         self._build_parent_child_map()
+        
+        # Log access issues if significant
+        if access_denied_count > 0:
+            print(f"Warning: {access_denied_count} processes could not be accessed (permission denied)")
+            if access_denied_count > len(processes) * 0.5:  # More than 50% inaccessible
+                print("Consider running as administrator for full process access")
+        
+        if no_such_process_count > 0:
+            print(f"Info: {no_such_process_count} processes terminated during scan")
+        
         return processes
     
     def _build_parent_child_map(self):
@@ -125,10 +140,29 @@ class ProcessMonitor:
         Returns:
             Dictionary with system resource information.
         """
-        return {
-            'cpu_percent': psutil.cpu_percent(interval=1),
-            'memory_percent': psutil.virtual_memory().percent,
-            'memory_available_gb': psutil.virtual_memory().available / (1024**3),
-            'memory_total_gb': psutil.virtual_memory().total / (1024**3),
-            'disk_usage_percent': psutil.disk_usage('/').percent if sys.platform != 'win32' else psutil.disk_usage('C:').percent
-        }
+        summary = {}
+        
+        try:
+            summary['cpu_percent'] = psutil.cpu_percent(interval=1)
+        except Exception:
+            summary['cpu_percent'] = 0.0
+        
+        try:
+            memory = psutil.virtual_memory()
+            summary['memory_percent'] = memory.percent
+            summary['memory_available_gb'] = memory.available / (1024**3)
+            summary['memory_total_gb'] = memory.total / (1024**3)
+        except Exception:
+            summary['memory_percent'] = 0.0
+            summary['memory_available_gb'] = 0.0
+            summary['memory_total_gb'] = 0.0
+        
+        try:
+            if sys.platform == 'win32':
+                summary['disk_usage_percent'] = psutil.disk_usage('C:').percent
+            else:
+                summary['disk_usage_percent'] = psutil.disk_usage('/').percent
+        except Exception:
+            summary['disk_usage_percent'] = 0.0
+        
+        return summary

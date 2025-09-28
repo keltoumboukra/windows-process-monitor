@@ -138,12 +138,25 @@ class ProcessMonitorCLI:
     
     def _display_top_processes(self, count: int) -> None:
         """Display top N processes by CPU usage."""
+        # Validate input
+        if count <= 0:
+            print("Error: Count must be a positive integer")
+            return
+        
+        if count > len(self.processes):
+            print(f"Warning: Requested {count} processes, but only {len(self.processes)} available")
+            count = len(self.processes)
+        
         print(f"\n" + "="*80)
         print(f"TOP {count} PROCESSES BY CPU USAGE")
         print("="*80)
         
         # Sort by CPU usage
         top_processes = sorted(self.processes, key=lambda p: p.cpu_percent, reverse=True)[:count]
+        
+        if not top_processes:
+            print("No processes found to display")
+            return
         
         table_data = []
         for i, proc in enumerate(top_processes, 1):
@@ -203,6 +216,11 @@ Examples:
     )
     
     args = parser.parse_args()
+    
+    # Validate arguments
+    if args.top is not None and args.top <= 0:
+        print("Error: --top must be a positive integer")
+        sys.exit(1)
     
     # Create and run CLI
     cli = ProcessMonitorCLI()
