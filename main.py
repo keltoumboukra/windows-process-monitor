@@ -30,9 +30,9 @@ class ProcessMonitorCLI:
             args: Parsed command line arguments
         """
         try:
-            # Get all processes
-            print("Scanning processes...")
-            self.processes = self.monitor.get_all_processes()
+            # Get all processes with I/O data
+            print("Scanning processes and collecting I/O data...")
+            self.processes = self.monitor.get_all_processes_with_io()
             
             if not self.processes:
                 print("Warning: No processes found. You may need to run as administrator.")
@@ -65,18 +65,29 @@ class ProcessMonitorCLI:
         # Prepare data for table
         table_data = []
         for proc in self.processes:
+            # Format I/O information
+            disk_info = "N/A"
+            if proc.disk_io:
+                disk_info = f"{proc.disk_io.total_bytes() / 1024:.1f} KB"
+            
+            network_info = "N/A"
+            if proc.network_io:
+                network_info = f"{proc.network_io.total_connections()} conns"
+            
             table_data.append([
                 proc.pid,
                 proc.name,
                 proc.status,
                 f"{proc.cpu_percent:.1f}%",
                 f"{proc.memory_mb:.1f} MB",
+                disk_info,
+                network_info,
                 proc.parent_pid or "N/A",
                 proc.username
             ])
         
         # Create table
-        headers = ["PID", "Name", "Status", "CPU %", "Memory", "Parent PID", "User"]
+        headers = ["PID", "Name", "Status", "CPU %", "Memory", "Disk I/O", "Network", "Parent PID", "User"]
         table = tabulate(table_data, headers=headers, tablefmt="grid")
         
         print(table)
@@ -135,6 +146,27 @@ class ProcessMonitorCLI:
         
         for i, proc in enumerate(top_memory, 1):
             print(f"{i}. {proc.name} (PID: {proc.pid}) - {proc.memory_mb:.1f} MB")
+        
+        # Show top disk I/O consumers
+        print("\nTop 5 Disk I/O Consumers:")
+        processes_with_disk_io = [p for p in self.processes if p.disk_io and p.disk_io.total_bytes() > 0]
+        if processes_with_disk_io:
+            top_disk_io = sorted(processes_with_disk_io, key=lambda p: p.disk_io.total_bytes(), reverse=True)[:5]
+            for i, proc in enumerate(top_disk_io, 1):
+                print(f"{i}. {proc.name} (PID: {proc.pid}) - {proc.disk_io.total_bytes() / 1024:.1f} KB")
+        else:
+            print("No disk I/O data available")
+        
+        # Show top network connection consumers
+        print("\nTop 5 Network Connection Consumers:")
+        processes_with_network_io = [p for p in self.processes if p.network_io and p.network_io.total_connections() > 0]
+        if processes_with_network_io:
+            top_network_io = sorted(processes_with_network_io, key=lambda p: p.network_io.total_connections(), reverse=True)[:5]
+            for i, proc in enumerate(top_network_io, 1):
+                connection_summary = proc.network_io.get_connection_summary()
+                print(f"{i}. {proc.name} (PID: {proc.pid}) - {connection_summary}")
+        else:
+            print("No network connection data available")
     
     def _display_top_processes(self, count: int) -> None:
         """Display top N processes by CPU usage."""
